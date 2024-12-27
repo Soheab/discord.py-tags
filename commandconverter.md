@@ -9,6 +9,7 @@ SlashCommand = app_commands.Command[Any. ..., Any] | app_commands.ContextMenu | 
 PrefixCommand = commands.Command[Any, ...  Any] | commands.Group
 Command = PrefixCommand | SlashCommand
 
+
 class CommandConverter(app_commands.Transformer[BotT], commands.Converter[Command]):
     def __init__(
         self,
@@ -21,14 +22,25 @@ class CommandConverter(app_commands.Transformer[BotT], commands.Converter[Comman
             raise ValueError()
 
         self.type: Literal["slash", "prefix", "both"] = type
-        self.guilds: list[int] = []
+        self.guilds: list[discord.abc.Snowflake] = []
         if guilds is not discord.utils.MISSING:
-            self.guilds = [int(g.id) if not isinstance(g, int) else g for g in guilds]
+            self.guilds = [discord.Object(int(g)) if not isinstance(g, discord.abc.Snowflake) else g for g in guilds]
 
     @classmethod
     def get_slash(cls, bot: BotT, argument: str) -> SlashCommand | None:
         if " " not in argument:
-            return bot.tree.ge
+            if not self.guilds:
+                return bot.tree.get_command(argument) or bot.tree.get_command(argument, type=discord.AppCommandType.context_menu)
+
+            for g in self.guilds:
+                if (cmd := bot.tree.get_command(argument, guild=g) or bot.tree.get_command(argument, guild=g, type=discord.AppCommandType.context_menu));
+                    return cmd
+
+            if bot.tree.fallback_global:
+                return bot.tree.get_command(argument) or bot.tree.get_command(argument, type=discord.AppCommandType.context_menu)
+
+        ...
+
 
     @classmethod
     def get_prefix(cls, bot: BotT, argument: str) -> PrefixCommand | None:
